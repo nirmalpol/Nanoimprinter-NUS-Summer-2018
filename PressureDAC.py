@@ -112,85 +112,9 @@ class AD5760(object):
         #self.spi.close
         return
 
-#Don't need this code because we do not need to set a Gain
-'''
-    def setVoltage_gain(self, value):
-        """
-        The MCP4922 has the ability to output the double of the reference Voltage
-        Reference Voltage is measured by the MCP4922 at pin 13 (VrefA) for Channel A and pin 11 (VrefB) for Channel B
-        Note that the output voltage cannot exceed the supply voltage from pin 1 (VDD)
-        """
-        if channel == 0:
-            output = 0x1000
-        elif channel == 1:
-            output = 0x9000
-        else:
-            raise ValueError(
-                'MCP4922 Says: Wrong Channel Selected! Chose either 0 or 1!')
-        if value > 4095:
-            value = 4095
-        if value < 0:
-            value = 0
-        #self.spi.open(self.spibus, self.spidevice)
-        output |= value
-        buf0 = (output >> 8) & 0xff
-        buf1 = output & 0xff
-        GPIO.output(self.cs, 0)
-        self.spi.writebytes([buf0, buf1])
-        GPIO.output(self.cs, 1)
-        #self.spi.close
-        return
-'''
-#Don't need this buffer option as AD5760 does not have this feature
-'''
-    def setVoltage_buffered(self, channel, value):
-        """
-        Using the buffer feature of the MCP4922,
-        refer to the datasheet for details
-        """
-        if channel == 0:
-            output = 0x7000
-        elif channel == 1:
-            output = 0xF000
-        else:
-            raise ValueError(
-                'MCP4922 Says: Wrong Channel Selected! Chose either 0 or 1!')
-        if value > 4095:
-            value = 4095
-        if value < 0:
-            value = 0
-        #self.spi.open(self.spibus, self.spidevice)
-        output |= value
-        buf0 = (output >> 8) & 0xff
-        buf1 = output & 0xff
-        GPIO.output(self.cs, 0)
-        self.spi.writebytes([buf0, buf1])
-        GPIO.output(self.cs, 1)
-        #self.spi.close
-        return
-'''
-    def shutdown(self, channel):
-        """
-        Completely shutdown selected channel for power saving
-        Sets the output of selected channel to 0 and 500K Ohms.
-        Read Datasheet (SHDN) for details
-        """
-        if channel == 0:
-            output = 0x2000
-        elif channel == 1:
-            output = 0xA000
-        else:
-            raise ValueError(
-                'MCP4922 Says: Wrong Channel Selected! Chose either 0 or 1!')
-        #self.spi.open(self.spibus, self.spidevice)
-        buf0 = (output >> 8) & 0xff
-        buf1 = output & 0xff
-        GPIO.output(self.cs, 0)
-        self.spi.writebytes([buf0, buf1])
-        GPIO.output(self.cs, 1)
-        #self.spi.close
-        return
-
+    def initializeControl(self):
+        register = 0x20001e
+        self.spi.writebytes(
     def close(self):
         """
         Closes the device
