@@ -45,8 +45,8 @@ import RPi.GPIO as GPIO
 import spidev
 
 
-class MCP5760(object):
-    """ Class for the Microchip MCP4922 digital to analog converter
+class AD5760(object):
+    """ Class for the Microchip AD5760 digital to analog converter
     """
     spi = spidev.SpiDev()
 
@@ -55,7 +55,7 @@ class MCP5760(object):
                  spidevice=None,
                  cs=None
                  ):
-        """ Initialize MCP5760 device with hardware SPI
+        """ Initialize AD5760 device with hardware SPI
             Chipselect default value is BCM Pin 8 (Physical Pin: 24)
             Select the bus and device number. Default values are:
             Bus = 0 ; Device = 1
@@ -87,7 +87,7 @@ class MCP5760(object):
 
         GPIO.setup(self.cs, GPIO.OUT)
         GPIO.output(self.cs, 1)
-        # As soon as MCP5760 object is created spidev bus and device are opened
+        # As soon as AD5760 object is created spidev bus and device are opened
         # otherwise causes memory leak and creates Errno 24
         self.spi.open(self.spibus, self.spidevice)
 
@@ -96,16 +96,16 @@ class MCP5760(object):
         Regular setVoltage Function
         Select Voltage value 0 to 65535
         """
-        output = 0x3000   #For MCP: Write to DAC1 = 0, Unbuffered = 0 , Gain = 1 , Active Mode = 1
-          
-        if value > 4095:
-            value = 4095
+        output = 0x100000   #For this DAC: R/W = 0 for writing; Address is 001; These set the first 4 bits (MSB), with the rest set by the user
+        
+        if value > 65535:
+            value = 65535
         if value < 0:
             value = 0
         #self.spi.open(self.spibus, self.spidevice)
-        output |= value
-        buf0 = (output >> 8) & 0xff
-        buf1 = output & 0xff
+        output |= (value << 4) #For the AD5760, the last 4 bits for the 24 bit "word" we write don't matter, as we only have 16 data bits: 4 for the preface, 16 databits, and 4 at the end (LSB side) that don't matter
+        
+        #Note: need to find out how we output to register using SPI for our model of DAC
         GPIO.output(self.cs, 0)
         self.spi.writebytes([buf0, buf1])
         GPIO.output(self.cs, 1)
