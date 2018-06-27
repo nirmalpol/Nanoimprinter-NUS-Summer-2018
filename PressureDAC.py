@@ -102,27 +102,29 @@ class AD5760(object):
             value = 65535
         if value < 0:
             value = 0
-        self.spi.open(self.spibus, self.spidevice)
         output |= (value << 4) #For the AD5760, the last 4 bits for the 24 bit "word" we write don't matter, as we only have 16 data bits: 4 for the preface, 16 databits, and 4 at the end (LSB side) that don't matter
         highByte = (output >> 16) & 0xff
         midByte = (output >> 8) & 0xff
         lowByte = (output) & 0xff
+          
+       
         GPIO.output(self.cs, 0)
         self.spi.writebytes([highByte, midByte, lowByte])
         GPIO.output(self.cs, 1)
-        self.spi.close()
+  
         return
 
     def setup(self):
         output = 0x20001e
-        self.spi.open(self.spibus, self.spidevice)
+     
         highByte = (output >> 16) & 0xff
         midByte = (output >> 8) & 0xff
         lowByte = (output) & 0xff
+
+       
         GPIO.output(self.cs, 0)
         self.spi.writebytes([highByte, midByte, lowByte])
         GPIO.output(self.cs, 1)
-        self.spi.close()
         return
     def close(self):
         """
