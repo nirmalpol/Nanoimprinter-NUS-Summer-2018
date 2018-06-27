@@ -126,6 +126,7 @@ class AD5760(object):
         self.spi.writebytes([highByte, midByte, lowByte])
         GPIO.output(self.cs, 1)
         return
+
     def close(self):
         """
         Closes the device
