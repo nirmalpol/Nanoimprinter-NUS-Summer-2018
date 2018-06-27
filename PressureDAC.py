@@ -81,7 +81,7 @@ class AD5760(object):
             self.spibus = spibus
 
         if spidevice is None:
-            self.spidevice = 1
+            self.spidevice = 0
         else:
             self.spidevice = spidevice
 
@@ -102,19 +102,28 @@ class AD5760(object):
             value = 65535
         if value < 0:
             value = 0
-        #self.spi.open(self.spibus, self.spidevice)
+        self.spi.open(self.spibus, self.spidevice)
         output |= (value << 4) #For the AD5760, the last 4 bits for the 24 bit "word" we write don't matter, as we only have 16 data bits: 4 for the preface, 16 databits, and 4 at the end (LSB side) that don't matter
-        
-        #Note: need to find out how we output to register using SPI for our model of DAC
+        highByte = (output >> 16) & 0xff
+        midByte = (output >> 8) & 0xff
+        lowByte = (output) & 0xff
         GPIO.output(self.cs, 0)
-        self.spi.writebytes([buf0, buf1])
+        self.spi.writebytes([highByte, midByte, lowByte])
         GPIO.output(self.cs, 1)
-        #self.spi.close
+        self.spi.close()
         return
 
-    def initializeControl(self):
-        register = 0x20001e
-        self.spi.writebytes(
+    def setup(self):
+        output = 0x20001e
+        self.spi.open(self.spibus, self.spidevice)
+        highByte = (output >> 16) & 0xff
+        midByte = (output >> 8) & 0xff
+        lowByte = (output) & 0xff
+        GPIO.output(self.cs, 0)
+        self.spi.writebytes([highByte, midByte, lowByte])
+        GPIO.output(self.cs, 1)
+        self.spi.close()
+        return
     def close(self):
         """
         Closes the device
