@@ -29,6 +29,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+"""
+The file below is designed to manipulate the AD5760 which is based off the above MCP4922 DAC model. 
+"""
+
 import RPi.GPIO as GPIO
 import spidev
 
