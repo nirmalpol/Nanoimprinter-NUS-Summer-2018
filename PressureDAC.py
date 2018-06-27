@@ -96,13 +96,8 @@ class MCP5760(object):
         Regular setVoltage Function
         Select Voltage value 0 to 65535
         """
-        if channel == 0:
-            output = 0x3000
-        elif channel == 1:
-            output = 0xb000
-        else:
-            raise ValueError(
-                'MCP4922 Says: Wrong Channel Selected! Chose either 0 or 1!')
+        output = 0x3000   #For MCP: Write to DAC1 = 0, Unbuffered = 0 , Gain = 1 , Active Mode = 1
+          
         if value > 4095:
             value = 4095
         if value < 0:
@@ -117,6 +112,8 @@ class MCP5760(object):
         #self.spi.close
         return
 
+#Don't need this code because we do not need to set a Gain
+'''
     def setVoltage_gain(self, value):
         """
         The MCP4922 has the ability to output the double of the reference Voltage
@@ -143,7 +140,9 @@ class MCP5760(object):
         GPIO.output(self.cs, 1)
         #self.spi.close
         return
-
+'''
+#Don't need this buffer option as AD5760 does not have this feature
+'''
     def setVoltage_buffered(self, channel, value):
         """
         Using the buffer feature of the MCP4922,
@@ -169,7 +168,7 @@ class MCP5760(object):
         GPIO.output(self.cs, 1)
         #self.spi.close
         return
-
+'''
     def shutdown(self, channel):
         """
         Completely shutdown selected channel for power saving
