@@ -30,14 +30,22 @@ SOFTWARE.
 """
 
 """
-The file below is designed to manipulate the AD5760 which is based off the above MCP4922 DAC model. 
+**************************************************************************************
+*This File is Modified By: Raghav Srinivasan and Nirmal Pol
+*File Name: PressureDAC.py
+*Purpose: To control the DAC that will be used to manipulate the Equilibar
+          pressure regulator for the nanoimprinter project. The code written
+          for the MCP4922 will be modified to suit the AD5760 DAC from Analog
+          Devices, that is being used for this project. This DAC is 1 channel and 16 bits.
+          
+***************************************************************************************
 """
-
+ 
 import RPi.GPIO as GPIO
 import spidev
 
 
-class MCP4922(object):
+class MCP5760(object):
     """ Class for the Microchip MCP4922 digital to analog converter
     """
     spi = spidev.SpiDev()
@@ -47,7 +55,7 @@ class MCP4922(object):
                  spidevice=None,
                  cs=None
                  ):
-        """ Initialize MCP4922 device with hardware SPI
+        """ Initialize MCP5760 device with hardware SPI
             Chipselect default value is BCM Pin 8 (Physical Pin: 24)
             Select the bus and device number. Default values are:
             Bus = 0 ; Device = 1
@@ -79,15 +87,14 @@ class MCP4922(object):
 
         GPIO.setup(self.cs, GPIO.OUT)
         GPIO.output(self.cs, 1)
-        # As soon as MCP4922 object is created spidev bus and device are opened
+        # As soon as MCP5760 object is created spidev bus and device are opened
         # otherwise causes memory leak and creates Errno 24
         self.spi.open(self.spibus, self.spidevice)
 
-    def setVoltage(self, channel, value):
+    def setVoltage(self, value):
         """
         Regular setVoltage Function
-        Select your channel 0 or 1
-        Select Voltage value 0 to 4095
+        Select Voltage value 0 to 65535
         """
         if channel == 0:
             output = 0x3000
@@ -110,7 +117,7 @@ class MCP4922(object):
         #self.spi.close
         return
 
-    def setVoltage_gain(self, channel, value):
+    def setVoltage_gain(self, value):
         """
         The MCP4922 has the ability to output the double of the reference Voltage
         Reference Voltage is measured by the MCP4922 at pin 13 (VrefA) for Channel A and pin 11 (VrefB) for Channel B
