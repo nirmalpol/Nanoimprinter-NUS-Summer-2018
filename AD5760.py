@@ -1,6 +1,25 @@
 #!/usr/bin/python
 #AD5760 Software Program
+'''
+File Name: AD5760.py
+Authors: Nirmal Pol and Raghav Srinivasan
+Date: July 09, 2018
+Description: This code allows someone to manipulate the AD5760 Digital to Analog converter (DAC) using a 
+Raspberry Pi. This code was tested using the evaluation board for this specific DAC, and with the following connections:
+NOTE: The numbering system uses the GPIO.BCM mode as reference
+SYNC connected to CE0 (GPIO pin 8)
+CLK connected to SCLC (GPIO pin 11)
+SDIN connected to MOSI (GPIO pin 10)
+SDO connected to MISO (GPIO pin 9)
+LDAC connected to GPIO pin 19 (for update purposes)
+In addition, the Digital supply Vcc was connected to the Raspberry Pi 3.3 V DC Power supply (Pin 01 in GPIO.BOARD mode), and 
+DGND is connected to the ground of the Raspberry Pi.
 
+The Analog supply has Vdd (positive supply) at 13 V and Vss (negative supply) at -7.5 V, with a common ground AGND between them.
+
+Overall, this code allows the user to control the output analog voltage from 0-10V using numbers from 0-65535.
+
+'''
 import time, math
 import RPi.GPIO as GPIO
 
