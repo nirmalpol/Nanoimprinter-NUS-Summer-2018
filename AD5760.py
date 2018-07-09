@@ -100,7 +100,7 @@ class ad5760(object):
                 time.sleep(2)
                 '''
                 GPIO.output(self.csPin, GPIO.LOW)
-                softreg = 0x400000              #0100...0110
+                softreg = 0x400000              #0100...0000
                 highB = (softreg >> 16) & 0xff
                 midB = (softreg >> 8) & 0xff
                 lowB = (softreg) & 0xff
