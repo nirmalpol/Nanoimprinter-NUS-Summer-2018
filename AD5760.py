@@ -76,6 +76,7 @@ class ad5760(object):
                 
         def sendByte(self,byte):
                 '''This function causes the MOSI pin to turn 1 or 0 at each iteration of the loop'''
+                #This method writes one byte of data to the DAC (taken from the max31865 code for the RTD for this project)
 
                 for bit in range(8):
                         GPIO.output(self.clkPin, GPIO.HIGH)
@@ -88,19 +89,16 @@ class ad5760(object):
 
         def setup(self):
                 '''
-                GPIO.output(self.csPin, GPIO.LOW)
-                softreg = 0x400006              #0100...0110
-                highB = (softreg >> 16) & 0xff
-                midB = (softreg >> 8) & 0xff
-                lowB = (softreg) & 0xff
-                self.sendByte(highB)
-                self.sendByte(midB)
-                self.sendByte(lowB)
-                GPIO.output(self.csPin, GPIO.HIGH)
-                time.sleep(2)
+                        This function is to setup the DAC by initializing the values for the software and control
+                        registers so that the DAC has the proper settings for operations. For more information as to
+                        the function of the bit registers and what each bit does, look at the datasheet in page 20:
+                        http://www.analog.com/media/en/technical-documentation/data-sheets/AD5760.pdf
                 '''
+                #Write to software register:
                 GPIO.output(self.csPin, GPIO.LOW)
                 softreg = 0x400000              #0100...0000
+                #The bits are 0 for writing, 100 for the address (in the first string of bits)
+                #The bits at the end are all 0 to keep LDAC off and CLR and RESET on (as both of these pins are active low)
                 highB = (softreg >> 16) & 0xff
                 midB = (softreg >> 8) & 0xff
                 lowB = (softreg) & 0xff
@@ -109,7 +107,15 @@ class ad5760(object):
                 self.sendByte(lowB)
                 GPIO.output(self.csPin, GPIO.HIGH)
                 
+                #Write to Control register:
                 output = 0x200012                       #0010...0001 0010
+                #In the first 4 bits, 0 is for writing and the address is 010
+                #SDOIS is 0 for enabling SDO pin
+                #BIN/2sC is 1 to enable offset binary coding as all of the values we are working with are positive (for this application)
+                #DACTRI and OPGND are 0 to enable normal operating mode
+                #RBUF is 1 so that we have unity gain
+                
+                #Separate bits and send them:
                 GPIO.output(self.csPin, GPIO.LOW)
                 highByte = (output >> 16) & 0xff
                 midByte = (output >> 8) & 0xff
@@ -120,6 +126,11 @@ class ad5760(object):
                 GPIO.output(self.csPin, GPIO.HIGH)
 
         def reset(self):
+                '''
+                        Was used to update the DAC output via software rather than have an LDAC connection, but
+                        didn't work and we found it easier to use a hardware connection to the LDAC pin and the update()
+                        method below, so this is not used.
+                '''
                 GPIO.output(self.csPin, GPIO.LOW)
                 softreg = 0x400007              #0100...0111
                 highB = (softreg >> 16) & 0xff
@@ -146,6 +157,10 @@ class ad5760(object):
                 GPIO.output(self.csPin, GPIO.HIGH)
 
         def update(self):
+                '''
+                        This method updates the DAC analog output using the value written to the DAC register in the
+                        setVoltage() method. 
+                '''
                 GPIO.output(self.ldac, GPIO.HIGH)
                 time.sleep(0.5)
                 GPIO.output(self.ldac, GPIO.LOW)
