@@ -25,12 +25,16 @@ import RPi.GPIO as GPIO
 
 class ad5760(object):
         def __init__(self, csPin = 8, misoPin = 9, mosiPin = 10, clkPin = 11, ldac = 19):
+                #Initializes the ad5760 object and sets all the parameters and GPIO values:
+                
+                #Creates constants for all the pins being used:
                 self.csPin = csPin
                 self.misoPin = misoPin
                 self.mosiPin = mosiPin
                 self.clkPin = clkPin
                 self.ldac = ldac
                 
+                #Sets the GPIO mode and sets the different pins to input or output:
                 GPIO.setwarnings(False)
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setup(self.csPin, GPIO.OUT)
@@ -38,13 +42,13 @@ class ad5760(object):
                 GPIO.setup(self.mosiPin, GPIO.OUT)
                 GPIO.setup(self.clkPin, GPIO.OUT)
                 GPIO.setup(self.ldac, GPIO.OUT)
-
+                
                 GPIO.output(self.csPin, GPIO.HIGH)
                 GPIO.output(self.clkPin, GPIO.LOW)
                 GPIO.output(self.mosiPin, GPIO.LOW)
 
         def setVoltage(self, value):
-                """        Regular setVoltage Function        Select Voltage value 0 to 65535
+                """  This method takes in a value 0 to 65535 (as this DAC is 16 bits) and outputs the corresponding voltage.
                 """
                 GPIO.output(self.csPin, GPIO.LOW)
                 output = 0x100000   #For this DAC: R/W = 0 for writing; Address is 001; These set the first 4 bits (MSB), with the rest set by the user
