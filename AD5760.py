@@ -48,23 +48,30 @@ class ad5760(object):
                 GPIO.output(self.mosiPin, GPIO.LOW)
 
         def setVoltage(self, value):
-                """  This method takes in a value 0 to 65535 (as this DAC is 16 bits) and outputs the corresponding voltage.
+                """  This method takes in a value from 0 to 65535 (as this DAC is 16 bits) and outputs the corresponding voltage.
+                     Example: Sending a value of 0 causes DAC to output 0V
+                              Sending a value of 65535 causes DAC to output 10V
                 """
                 GPIO.output(self.csPin, GPIO.LOW)
-                output = 0x100000   #For this DAC: R/W = 0 for writing; Address is 001; These set the first 4 bits (MSB), with the rest set by the user
+                
+                output = 0x100000   #R/W = 0 for writing; Address is 001; These set the first 4 bits (MSB), with rest set by the user
                 if value > 65535:
                         value = 65535
                 if value < 0:
                         value = 0
-                #For the AD5760, the last 4 bits for the 24 bit "word" we write don't matter,
-                #as we only have 16 data bits: 4 for the preface, 16 databits, and 4 at the end (LSB side) that don't matter
+                        
+                #The last 4 bits for the 24 bit "word" we write don't matter,
                 output |= (value << 4) 
+                
+                #So we have 4 bits for the preface, 16 databits, and 4 bits at the end (LSB side) that don't matter
+                #Split the output into the 3 bytes it is made of, and send them separately to the DAC with the sendByte method:
                 highByte = (output >> 16) & 0xff
                 midByte = (output >> 8) & 0xff
                 lowByte = (output) & 0xff
                 self.sendByte(highByte)
                 self.sendByte(midByte)
                 self.sendByte(lowByte)
+                
                 GPIO.output(self.csPin, GPIO.HIGH)
                 
         def sendByte(self,byte):
