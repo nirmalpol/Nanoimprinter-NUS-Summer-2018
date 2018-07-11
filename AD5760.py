@@ -164,28 +164,3 @@ class ad5760(object):
                 GPIO.output(self.ldac, GPIO.HIGH)
                 time.sleep(0.5)
                 GPIO.output(self.ldac, GPIO.LOW)
-
-
-
-if __name__ == "__main__":
-
-        csPin = 8
-        misoPin = 9
-        mosiPin = 10
-        clkPin = 11
-        ldac = 19
-        dac = ad5760(csPin,misoPin,mosiPin,clkPin, ldac)
-        dac.setup()
-        a = 0
-        try:
-                while True:
-                        dac.setVoltage(0)
-                        time.sleep(0.2)
-                        print('repeat')
-                        dac.update()
-                        a = (a + 100) % (66000)
-                        print(a)
-                        
-        finally:
-                GPIO.cleanup()
-                #dac.close()
