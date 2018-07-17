@@ -8,13 +8,6 @@
 	# 							   Edit Mode/ Sequence-Log Adjust Functions
 	# 							   Run Mode/ Functions
 	# 							   Other General Functions
-	# 			Open Order:
-	# 				1.Imports UI, then Log, Monitor and Process, in that order.
-	# 				2.Buttons already in the UI are connected/wired
-	# 				3.Then the sequence tab is created based on DEFAULTSEQUENCE and DEFAULTNOOFPHASE
-	# 				4.Interface clock is then loaded, and the graph tab is created
-	# 				5.Interface log loads by default from General Log
-
 	# 			Memory:
 	# 			   Default Sequence Template is contained in tabsInit, as self.seq and self.number_of_phase
 	# 			   Items on tabs are saved and can be controlled from stored arrays:
@@ -25,18 +18,16 @@
 	# 			   Default Sequence Template is contained in tabsInit, as self.seq and self.number_of_phase
 				   
 	# 			Action:
-	# 			   Runtime operates using 4 separate clocks, see runBegin for more info
 	# 			   There are 3 modes this UI can be at:
-	# 			   1. Inactive = Ready to start. Monitor and Log active thruout (run-> 2 or edit -> 3)
-	# 			   2. Run = Activates Process (stop -> 1)
-	# 			   3. Edit Mode = Alters Sequence tab (save seq -> 1)
+	# 			   1. Inactive = Ready to start. Monitor and Log active thruout
+	# 			   2. Run = Activates Process
+	# 			   3. Edit Mode = Alters Sequence tab
 
-	# 			Revision:
 	# 			   Classes dataLogClass, processMemory and monitorClass are NOT fixed to this UI
 	# 			   The three classes only demand 'displayMessage' function from UI to be accessible
 	# 			   The only work this UI do, aside from showing info, is twofold:
-	# 			   1. Management of sequences
-	# 			   2. Management of class function calling using clocktime
+	# 			   1. Management of sequences during run, passing each sequence individually to the processMemory
+	# 			   2. Handle output files
 	# 			   Other jobs are delegated to the three classes
 				   
 	# =========================================================================
@@ -53,15 +44,15 @@ from PyQt5.QtCore import *
 import time
 import numpy as np
 import threading
+# import signal
 
 # Import original classes/functions
-# from clocktime import clocktime
 from processMemory import processMemory
 from monitorClass import monitorClass
 from dataLogClass import dataLogClass
 
-import probe
 
+# Edit this to change the default opening tabs
 global DEFAULTSEQUENCE, DEFAULTNOOFPHASE
 
 DEFAULTSEQUENCE = [['Heating   ',1,0,80,0,0,100,2,2,5,1,1],
@@ -71,8 +62,8 @@ DEFAULTNOOFPHASE = 2
 
 class locker:
 	# Threading conditions, as a way to control whether threads open or close
-	# cMeasure = threading.Condition()
-	# cProcess = threading.Condition()
+	# cMeasure = threading.Condition()	#Used when you want several running UI, so they do work alternately
+	# cProcess = threading.Condition()	#So, it's currently unused
 	# cClock = threading.Condition()
 	# cEmergency = threading.Condition()
 	can_Measure = True
@@ -80,6 +71,7 @@ class locker:
 	can_Clock = False
 
 	new_phase = False
+	target_phase = 0
 
 	is_Emergency = False
 	is_exiting = False
@@ -93,7 +85,7 @@ class NanoUI(QtWidgets.QMainWindow):
 	settingsArray = []
 	labelsArray = []
 
-
+	seq = []
 
 	def __init__(self):
 
@@ -207,7 +199,6 @@ class NanoUI(QtWidgets.QMainWindow):
 				self.buttonArray[row][col].setEnabled(False)
 			for col in range(len(self.settingsArray[row])):
 				self.settingsArray[row][col].setEnabled(False)
-		self.displayMessage('Loaded')
 
 	def threadsInit(self):
 		#Create a global set of locks
@@ -223,7 +214,6 @@ class NanoUI(QtWidgets.QMainWindow):
 		b.start()
 
 	def graphInit(self):
-	#Interface Clock
 	#Graph
 		self.log.createGraphs()
 
@@ -238,22 +228,31 @@ class NanoUI(QtWidgets.QMainWindow):
 	# EXIT, and File Saving functions
 	# ==========================================================
 
+	# NOT DONE
 	def fileNew(self):
 		asknew = self.generateMessageBox('New File','Your current progress will be removed upon creating new file. Confirm?')
 		if asknew == QMessageBox.Ok:
-			#Create new file
+			#add warning message as files will be unsaved
+			#Then Reset memory, create from template
 			print('FileNew')
 		else:
 			return
-	def fileOpen(self):
-		print('FileOpen')
 
+	# NOT DONE
+	def fileOpen(self):
+		#add warning message as files will be unsaved
+		#then find a way to look up directory for data file
+		self.log.loadData()
+
+	# NOT DONE
 	def fileSave(self):
-		print('FileSave')
-		self.log.saveData()
+		savename = "test.txt"
+		assert(self.log.saveData())
+		self.displayMessage("File saved as {}".format(savename))
 
 	def fileExit(self):
-		print('FileExit')
+		self.close()
+		
 
 	# Sequence and Log Adjust functions
 	# ==========================================================
@@ -319,7 +318,7 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage('adjustSaveSettings')
 
 	def functNewSequence(self, number_of_phas,sdesc,sendc,stime,stemp,spres,sheat
-						,shout,skp,ski,skd,svacu,scool):
+						,shout,skp,ski,skd,svacu,scool):	#shout is s-Heat-out
 	#Create Buttons placed in layout2
 		buttons_text = ['Delete Phase','Insert New Phase','Move Phase']
 		buttons_name = ['delete','new','move']
@@ -389,7 +388,6 @@ class NanoUI(QtWidgets.QMainWindow):
 				layoutWidg = QComboBox()
 				layoutWidg.addItem('Rapid')
 				layoutWidg.addItem('PID Controlled')
-				layoutWidg.addItem('Maintain')
 				layoutWidg.addItem('Off')
 				layoutWidg.addItem('PWM (0-100)')
 				layoutWidg.addItem('Custom 2')
@@ -667,34 +665,22 @@ class NanoUI(QtWidgets.QMainWindow):
 
 
 	def displayTime(self):
-		self.locks.can_Clock = True
-		self.locks.new_phase = False
-		self.start_time_of_run = time.time()
-		self.start_time_of_phase = 0
-		try:
-			while self.locks.can_Clock and (not self.locks.is_Emergency):
-				# Reset Phase clock if new phase is detected
-				if self.locks.new_phase:
-					self.locks.new_phase = False
-					self.start_time_of_phase = time.time() - self.start_time_of_run
-				# Create a counting clock indicating time from start of run
-				number = round(time.time() - self.start_time_of_run - 0.5)
-				timetext = "{:02d}:{:02d}".format(number // 60,number%60)
-				self.label_runtime.setText(timetext)
-				self.monit_time.setText(timetext)
+		# Check for time of phase reset
+		if self.locks.new_phase:
+			self.start_time_of_phase = time.time() - self.start_time_of_run
 
-				# Create a clock from start of only one phase
-				number_phase = number - self.start_time_of_phase
-				timetext2 = "{:02d}:{:02d}".format(number_phase // 60,number_phase%60)
-				self.monit_timephase.setText(timetext2)
+		# Create a counting clock indicating time from start of run
+		number = round(time.time() - self.start_time_of_run - 0.5)
+		timetext = "{:02d}:{:02d}".format(number // 60,number%60)
+		self.label_runtime.setText(timetext)
+		self.monit_time.setText(timetext)
 
-				# Delay to reduce computational burden
-				time.sleep(0.1)
-		except:
-			# Activate Emergency flag if any error occur
-			self.locks.is_Emergency = True
-		finally:
-			pass
+		# Create a clock from start of only one phase
+		number_phase = number - self.start_time_of_phase
+		timetext2 = "{:02d}:{:02d}".format(number_phase // 60,number_phase%60)
+		self.monit_timephase.setText(timetext2)
+
+
 
 	# Run functions
 	# ==========================================================
@@ -727,54 +713,64 @@ class NanoUI(QtWidgets.QMainWindow):
 		# THIS IS WHERE THE PROGRAM RUNS
 		# Everytime phase changes, (due to job finish, or runPrev or runNext or runSTOP)
 		# 	ALWAYS INVOKE runPhaseInterrupt first
-		# runPhase is used conversely to begin run cycles
+		# runOnce is used conversely to begin run cycles
 		# =====================================
 
 			self.currentPhase = 0
 			self.process.setup()
-			self.process.loadData()
+			self.process.loadData(self.seq[self.currentPhase])
 
+			self.locks.can_Clock = True
+			self.locks.new_phase = False
+			self.start_time_of_run = time.time()
+			self.start_time_of_phase = 0
+		
 			a = threading.Thread(target = self.runThread)
 			self.threads.append(a)
 			a.start()
-
-			# seqcp = self.seq[self.currentPhase]
-			# if seqcp[5] == 0:
-			# 	t_mode = True
-			# 	t_pwm = 100
-			# elif segcp[5] == 1:
-			# 	t_mode = False
-			# 	t_pwm = 0
-			# elif segcp[5] == 2:
-			# 	t_mode = True
-			# 	t_pwm = 0
-			# elif segcp[5] == 3:
-			# 	t_mode = True
-			# 	t_pwm = 0
-			# else:
-			# 	return #Error
-			# self.process.setTempFix(t_mode,t_pwm)
-			# self.process.setTempPID(seqcp[7],seqcp[8],seqcp[9],seqcp[7],seqcp[8],seqcp[9])
-			# self.process.setTarget(seqcp[3],seqcp[4])
 
 		elif self.modeNow == 'Run':
 			return #Error
 		else:
 			return #Error
 
+		
+
 	def runThread(self):
 		self.locks.can_Process = True
 		try:
 			while self.locks.can_Process and (not self.locks.is_Emergency):
-				self.displayTime
+				self.displayTime()
 				if self.locks.new_phase:
 					self.runPhaseInterrupt()
 				else:
-					self.process.run()
+					self.runOnce()
+					self.runCheck()
 		except:
 			self.locks.is_Emergency = True
 		finally:
 			self.runEnd()
+
+	# This decorator gives a (n) second timer before it will be forcefully stopped
+	@self.exit_after(5)
+	def runOnce(self):
+		self.process.run()
+
+	@self.exit_after(5)
+	def runPhaseInterrupt(self):
+	# Transition to next Phase
+		# self.log.updateVerticalLine(self.process.asktime())
+		self.locks.new_phase = False
+		if self.locks.target_phase in range(self.number_of_phase):
+			self.currentPhase = self.locks.target_phase
+			self.phase_tabs.setCurrentIndex(self.locks.target_phase)
+			self.process.loadData(self.seq[self.currentPhase])
+			return
+		else:
+			self.locks.can_Process = False
+			return
+
+	# NOT DONE
 	def runCheck(self):
 	#Check if end condition is fulfilled
 	# [!] WARNING spike in T or P can trigger end of phase forcefully
@@ -783,41 +779,31 @@ class NanoUI(QtWidgets.QMainWindow):
 		if seqcp[1] == 1:
 			#Reach T
 			if self.monitor.T >= self.seq[self.currentPhase][3]:
-				# self.que.add('Interrupt',self.currentPhase + 1)
-				return 1
+				self.locks.new_phase = True
+				self.locks.target_phase = self.currentPhase + 1
+				return
 		elif seqcp[1] == 2:
 			#Reach P
 			if self.monitor.P >= self.seq[self.currentPhase][4]:
-				# self.que.add('Interrupt',self.currentPhase + 1)
-				return 1
+				self.locks.new_phase = True
+				self.locks.target_phase = self.currentPhase + 1
+				return
 		elif seqcp[1] == 3:
 			#Check phasetime
 			number = 60
 			if number >= self.seq[self.currentPhase][2]:
-				# self.que.add('Interrupt',self.currentPhase + 1)
-				return 1
+				self.locks.new_phase = True
+				self.locks.target_phase = self.currentPhase + 1
+				return
 		elif seqcp[1] == 4:
-			# self.que.add('Interrupt',self.currentPhase + 1)
-			return 1
-		else:
-			return 0
-
-	def runPhaseInterrupt(self,phaseAfter):
-	#Transition to next Phase
-		# self.log.updateVerticalLine(self.process.asktime())
-		if phaseAfter < self.number_of_phase:
-			self.currentPhase = phaseAfter
-			self.phase_tabs.setCurrentIndex(phaseAfter)
-
-			seqcp = self.seq[self.currentPhase]
-			self.process.setTempPID(seqcp[7],seqcp[8],seqcp[9],seqcp[7],seqcp[8],seqcp[9])
-			self.process.setTarget(seqcp[3],seqcp[4])
-
+			self.locks.new_phase = True
+			self.locks.target_phase = self.currentPhase + 1
 			return
 		else:
 			return
 
 	def runEnd(self):
+		self.displayMessage('Closing...')
 		self.process.close()
 
 		self.modeNow = 'Inactive'
@@ -834,7 +820,7 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage('Run Stopped. Now on Standby')
 		self.displayMessage('=====')
 
-		return 0
+		return
 
 	# in-UI Run functions
 	# ==========================================================
@@ -845,7 +831,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		if a != None:
 			self.seq[self.currentPhase][3] = a
 			self.settingsArray[self.currentPhase][4].setText(str(a))
-			# self.que.add('Interrupt',self.currentPhase)
+			self.locks.target_phase = self.currentPhase
+			self.locks.new_phase = True
 
 	def runChangeP(self):
 		self.displayMessage('RunChangeP')
@@ -853,7 +840,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		if a != None:
 			self.seq[self.currentPhase][4] = a
 			self.settingsArray[self.currentPhase][6].setText(str(a))
-			# self.que.add('Interrupt',self.currentPhase)
+			self.locks.target_phase = self.currentPhase
+			self.locks.new_phase = True
 
 	def runNext(self):
 		thisTab = self.currentPhase
@@ -862,8 +850,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		if a == QMessageBox.Ok:
 			self.displayMessage("{} {}{}".format("Moving to Phase ",str(thisTab+2),"..."))
 			if thisTab == self.currentPhase:
-				self.currentPhase += 1
-				# self.que.add('Interrupt',self.currentPhase)
+				self.locks.target_phase += 1
+				self.locks.new_phase = True
 			else:
 				self.displayMessage("Error. Moving to Next Tab Aborted")
 
@@ -874,9 +862,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		if a == QMessageBox.Ok:
 			self.displayMessage("{} {}{}".format("Moving to Phase ",str(thisTab),"..."))
 			if thisTab == self.currentPhase:
-				self.currentPhase -= 1
-				print(self.currentPhase)
-				# self.que.add('Interrupt',self.currentPhase)
+				self.locks.target_phase -= 1
+				self.locks.new_phase = True
 			else:
 				self.displayMessage("Error. Moving to Previous Tab Aborted")
 
@@ -889,8 +876,8 @@ class NanoUI(QtWidgets.QMainWindow):
 			if a == thisTab+1:
 				self.displayMessage("Moving to Tab Aborted")
 			elif thisTab == self.currentPhase:
-				self.currentPhase = a-1
-				# self.que.add('Interrupt',self.currentPhase)
+				self.locks.target_phase = a - 1
+				self.locks.new_phase = True
 			else:
 				self.displayMessage("Error. Moving to Tab Aborted")
 
@@ -901,11 +888,9 @@ class NanoUI(QtWidgets.QMainWindow):
 			return #Error
 		elif self.modeNow == 'Run':
 			self.shownow()
-			self.displayMessage('Stopping Run...')
-
-			# self.que.add('Interrupt',self.number_of_phase)
-
-			
+			self.displayMessage('Signalling End of Run...')
+			# Flags an exit, waiting for runThread to stop
+			self.locks.can_Process = False
 		else:
 			return #Error
 
@@ -929,12 +914,10 @@ class NanoUI(QtWidgets.QMainWindow):
 		if okPressed:
 			return i
 
-	def displayMessage(self, msg, purpose = None):
+	def displayMessage(self, msg, purpose = 'G'):
 		curr_time = time.time() - self.start_time
 		#By default/None sent to General. Purpose Flags available are 'G', 'P', 'M', 'ErRoR'
 		#G = General, P = Process, M = Monitor
-		if purpose == None:
-			purpose = 'G'
 		if purpose == 'G':
 			self.text_log.append(msg)
 			print(msg)
@@ -947,6 +930,7 @@ class NanoUI(QtWidgets.QMainWindow):
 
 	def templambda1(self,row,col):
 		#Use of lambda to create an instance of function, SO connect can now call functions WITH inputs
+		#I think there is a better way to do it with *args or decorator or something, but this works too
 		return lambda: self.buttonPressed(row,col)
 
 	def templambda2(self,row,col):
@@ -980,6 +964,30 @@ class NanoUI(QtWidgets.QMainWindow):
 		
 		if event.key() == Qt.Key_Escape:
 			self.close()
+
+	# Timeout decorator
+	def exit_after(self,s):
+		'''
+		use as decorator to exit process if 
+		function takes longer than s seconds
+		'''
+		def outer(fn):
+			def inner(*args, **kwargs):
+				timer = threading.Timer(s, self.afterTimeout, args=[fn.__name__])
+				timer.start()
+				try:
+					result = fn(*args, **kwargs)
+				finally:
+					timer.cancel()
+				return result
+			return inner
+		return outer
+
+	def afterTimeout(self):
+		# print to stderr, unbuffered in Python 2.
+		print('{0} took too long'.format(fn_name), file=sys.stderr)
+		sys.stderr.flush() # Python 3 stderr is likely buffered.
+		thread.interrupt_main() # raises KeyboardInterrupt
 
 if __name__ == '__main__':
 

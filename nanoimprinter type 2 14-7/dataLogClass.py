@@ -201,9 +201,11 @@ class dataLogClass():
 			msg = ';'.join('Error',msg)
 			self.logGeneral.append([curr_time,msg])
 
+	# NOT DONE
 	def loadData(self,sourceFile):
 		print('Loading')
 
+	# NOT DONE
 	def saveData(self,targetfile):
 		print('Creating file')
 

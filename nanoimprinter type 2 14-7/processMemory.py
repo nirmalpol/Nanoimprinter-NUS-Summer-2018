@@ -118,7 +118,11 @@ class processMemory:
 
 	# Data to load:
 	# ===================
-	def loadData(self):		
+	# Only accepts data from ONE phase at a time.
+	# To change phase, load data first before running
+
+	#NOT DONE
+	def loadData(self,seqcp):		
 		self.setTarget()
 		self.setTempPID() #not complete
 
