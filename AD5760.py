@@ -25,7 +25,8 @@ import RPi.GPIO as GPIO
 
 class ad5760(object):
 	def __init__(self, csPin = 8, misoPin = 9, mosiPin = 10, clkPin = 11, ldac = 19):
-		#Initializes the ad5760 object and sets all the parameters and GPIO values:
+		'''	Initializes the ad5760 object and sets all the parameters and GPIO values.
+		'''
 		
 		#Creates constants for all the pins being used:
 		self.csPin = csPin
@@ -78,8 +79,10 @@ class ad5760(object):
 		GPIO.output(self.csPin, GPIO.HIGH)
 		
 	def sendByte(self,byte):
-		'''This function causes the MOSI pin to turn 1 or 0 at each iteration of the loop'''
-		#This method writes one byte of data to the DAC (taken from the max31865 code for the RTD for this project)
+		'''
+			This method causes the MOSI pin to turn 1 or 0 at each iteration of the loop. It
+		   	writes one byte of data to the DAC (taken from the max31865 code for the RTD for this project)
+		'''
 
 		for bit in range(8):
 			GPIO.output(self.clkPin, GPIO.HIGH)
@@ -92,11 +95,12 @@ class ad5760(object):
 
 	def setup(self):
 		'''
-			This function is to setup the DAC by initializing the values for the software and control
+			This method is used to setup the DAC by initializing the values for the software and control
 			registers so that the DAC has the proper settings for operations. For more information as to
 			the function of the bit registers and what each bit does, look at the datasheet in page 20:
 			http://www.analog.com/media/en/technical-documentation/data-sheets/AD5760.pdf
 		'''
+		
 		#Write to software register:
 		GPIO.output(self.csPin, GPIO.LOW)
 		softreg = 0x400000              #0100...0000
