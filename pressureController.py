@@ -10,46 +10,52 @@ import time
 import RPi.GPIO as GPIO
 from AD5760 import ad5760
 
-def setPressure(press):
-        #This function sets the pressure of the pressure regulator immediately, by changing the output
-        #voltage of the DAC directly to the voltage corresponding to the desired pressure
-        if (press > 35): #Confirming inputs
-            press = 35
-        if (press < 0):
-            press = 0
-        #Converting pressure into the step for the DAC:
-        step = int((press + 0.3/35)*65535) #Adjustment of 0.3 bar as there is an offset in the actual pressure regulator in practice
-        #Set the desired voltage on the DAC: 
-        dac = ad5760()
-        dac.setup()
-        dac.setVoltage(step)
-        dac.update()
-        GPIO.cleanup()
 
-def setPressureStep(press, stepSize, delay):
-        #This function sets the pressure of the pressure regulator gradually, rather than immediately by the 
-        #setPressure method. This function inputs stepSize, the amount of steps skipped when ramping up the pressure (more
-        #results in less time to increase pressure), and delay, the time delay between each step increase (more results in more
-        #time to increase pressure)
-        
-        if (press > 35):
-            press = 35
-        if (press < 0):
-            press = 0
+class pressureController:
+	def __init__(self):
+		self.dac = ad5760(csPin = 8, ldac = 19)
+		self.stepSize = 1
+		self.delay = 0
 
-        step = int((press/35)*65535)
+	def setPressure(self,press):
+		#This function sets the pressure of the pressure regulator immediately, by changing the output
+		#voltage of the DAC directly to the voltage corresponding to the desired pressure
+		if (press > 35): #Confirming inputs
+			press = 35
+		if (press < 0):
+			press = 0
+		#Converting pressure into the step for the DAC:
+		step = int((press + 0.3/35)*65535) #Adjustment of 0.3 bar as there is an offset in the actual pressure regulator in practice
+		#Set the desired voltage on the DAC: 
+		self.dac.setVoltage(step)
+		self.dac.update()
 
-        dac = ad5760()
-        dac.setup()
-        #For loop to gradually increase pressure: 
-        for i in range(0, step, stepSize):
-                dac.setVoltage(i)
-                time.sleep(delay)
-                dac.update()
+	def setPressureStep(self,press):
+		#This function sets the pressure of the pressure regulator gradually, rather than immediately by the 
+		#setPressure method. This function inputs stepSize, the amount of steps skipped when ramping up the pressure (more
+		#results in less time to increase pressure), and delay, the time delay between each step increase (more results in more
+		#time to increase pressure)
+		
+		if (press > 35):
+			press = 35
+		if (press < 0):
+			press = 0
 
-        dac.setVoltage(step)
-        dac.update()
-        GPIO.cleanup()
+		step = int((press/35)*65535)
+
+		#For loop to gradually increase pressure: 
+		for i in range(0, step, self.stepSize):
+			self.dac.setVoltage(i)
+			dac.update()
+
+			time.sleep(self.delay)
+
+		self.dac.setVoltage(step)
+		self.dac.update()
+
+	def close(self):
+		self.dac.close()
 
 
-        
+
+			
