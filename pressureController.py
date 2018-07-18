@@ -26,10 +26,21 @@ class pressureController:
 		if (press < 0):
 			press = 0
 		#Converting pressure into the step for the DAC:
-		step = int((press + 0.3/35)*65535) #Adjustment of 0.3 bar as there is an offset in the actual pressure regulator in practice
+		step = int((press/35)*65535) #Adjustment of 0.3 bar as there is an offset in the actual pressure regulator in practice
 		#Set the desired voltage on the DAC: 
 		self.dac.setVoltage(step)
 		self.dac.update()
+		actual = self.readPressure()
+		cur = press
+		while (abs(actual - press) > 0.05):
+			if (cur > actual):
+				cur = cur - 0.01
+			else:
+				cur = cur + 0.01
+			step = int((cur/35)*65535)
+			self.dac.setVoltage(step)
+			self.dac.update()
+			time.sleep(0.01)
 
 	def setPressureStep(self,press):
 		#This function sets the pressure of the pressure regulator gradually, rather than immediately by the 
