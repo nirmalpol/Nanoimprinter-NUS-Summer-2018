@@ -53,28 +53,33 @@ from dataLogClass import dataLogClass
 
 
 # Edit this to change the default opening tabs
-global DEFAULTSEQUENCE, DEFAULTNOOFPHASE
+global DEFAULTSEQUENCE, DEFAULTNOOFPHASE, DEFAULTTAB
 
 DEFAULTSEQUENCE = [['Heating   ',1,0,80,0,0,100,2,2,5,1,1],
 					['Maintain T',3,2.5,80,35,2,0,1,1,1,1,1]]
 
 DEFAULTNOOFPHASE = 2
 
+DEFAULTTAB = ['Default Message',1,0,80,0,0,100,2,2,5,1,1]
+
 class locker:
-	# Threading conditions, as a way to control whether threads open or close
-	# cMeasure = threading.Condition()	#Used when you want several running UI, so they do work alternately
-	# cProcess = threading.Condition()	#So, it's currently unused
-	# cClock = threading.Condition()
-	# cEmergency = threading.Condition()
+	# This class is used for signalling between functions that they can work/ need to stop
+	# I should've put (NanoUI)self.modeNow here but hey this is implemented later
 	can_Measure = True
 	can_Process = True
 	can_Clock = False
+
 
 	new_phase = False
 	target_phase = 0
 
 	is_Emergency = False
 	is_exiting = False
+
+
+	# Threading conditions, as a way to control whether threads open or close
+	# cMeasure = threading.Condition()	#Used when you want several running UI, so they do work alternately
+
 
 
 class NanoUI(QtWidgets.QMainWindow):
@@ -390,7 +395,7 @@ class NanoUI(QtWidgets.QMainWindow):
 				layoutWidg.addItem('PID Controlled')
 				layoutWidg.addItem('Off')
 				layoutWidg.addItem('PWM (0-100)')
-				layoutWidg.addItem('Custom 2')
+				layoutWidg.addItem('Custom')
 				layoutWidg.setCurrentIndex(sheat)
 				layoutWidg.currentIndexChanged.connect(self.templambda2(number_of_phas,8))
 			elif countz == 6:
@@ -480,7 +485,7 @@ class NanoUI(QtWidgets.QMainWindow):
 			else:
 				return #Error
 		elif buttonCode == 1:
-			defNewTab = ['Default Message',1,0,80,0,0,100,2,2,5,1,1]
+			defNewTab = DEFAULTTAB
 			self.seq.append(defNewTab)
 			self.functNewSequence(self.number_of_phase,*defNewTab)
 			self.number_of_phase = self.number_of_phase + 1
@@ -721,6 +726,7 @@ class NanoUI(QtWidgets.QMainWindow):
 			self.process.loadData(self.seq[self.currentPhase])
 
 			self.locks.can_Clock = True
+			self.locks.can_Process = True
 			self.locks.new_phase = False
 			self.start_time_of_run = time.time()
 			self.start_time_of_phase = 0
@@ -732,7 +738,7 @@ class NanoUI(QtWidgets.QMainWindow):
 		elif self.modeNow == 'Run':
 			return #Error
 		else:
-			return #Error
+			raise #Error
 
 		
 
@@ -741,11 +747,11 @@ class NanoUI(QtWidgets.QMainWindow):
 		try:
 			while self.locks.can_Process and (not self.locks.is_Emergency):
 				self.displayTime()
+				self.runCheck()
 				if self.locks.new_phase:
 					self.runPhaseInterrupt()
 				else:
 					self.runOnce()
-					self.runCheck()
 		except:
 			self.locks.is_Emergency = True
 		finally:
@@ -763,6 +769,7 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.locks.new_phase = False
 		if self.locks.target_phase in range(self.number_of_phase):
 			self.currentPhase = self.locks.target_phase
+			self.process.transition()
 			self.phase_tabs.setCurrentIndex(self.locks.target_phase)
 			self.process.loadData(self.seq[self.currentPhase])
 			return
@@ -772,9 +779,16 @@ class NanoUI(QtWidgets.QMainWindow):
 
 	# NOT DONE
 	def runCheck(self):
-	#Check if end condition is fulfilled
-	# [!] WARNING spike in T or P can trigger end of phase forcefully
-	# [!] Will need some time before being sure that the change in T or P is not transient
+		# From seqcp:
+		# [1] Endcondition '1'
+		#		(0) Click to Proceed/ Will not stop automaticallu
+		#		(1) Reach Temp
+		#		(2) Reach Pressure
+		#		(3) Wait for time to pass
+		#		(4) Immediately skip/ Temporarily 'delete' a phase
+		#Check if end condition is fulfilled
+		# [!] WARNING spike in T or P can trigger end of phase forcefully
+		# [!] Will need some time before being sure that the change in T or P is not transient
 		seqcp = self.seq[self.currentPhase]
 		if seqcp[1] == 1:
 			#Reach T
