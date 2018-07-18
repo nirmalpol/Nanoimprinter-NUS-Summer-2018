@@ -14,6 +14,7 @@ from AD5760 import ad5760
 class pressureController:
 	def __init__(self):
 		self.dac = ad5760(csPin = 8, ldac = 19)
+		self.adc = 
 		self.stepSize = 1
 		self.delay = 0
 
@@ -52,6 +53,9 @@ class pressureController:
 
 		self.dac.setVoltage(step)
 		self.dac.update()
+		
+	def readPressure(self):
+		
 
 	def close(self):
 		self.dac.close()
