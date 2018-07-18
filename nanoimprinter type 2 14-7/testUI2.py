@@ -783,7 +783,7 @@ class NanoUI(QtWidgets.QMainWindow):
 		# [1] Endcondition '1'
 		#		(0) Click to Proceed/ Will not stop automaticallu
 		#		(1) Reach Temp
-		#		(2) Reach Pressure
+		#		(2) (PRESSURE NOT READ BY REGULATOR) Reach Pressure
 		#		(3) Wait for time to pass
 		#		(4) Immediately skip/ Temporarily 'delete' a phase
 		#Check if end condition is fulfilled
@@ -798,10 +798,11 @@ class NanoUI(QtWidgets.QMainWindow):
 				return
 		elif seqcp[1] == 2:
 			#Reach P
-			if self.monitor.P >= self.seq[self.currentPhase][4]:
-				self.locks.new_phase = True
-				self.locks.target_phase = self.currentPhase + 1
-				return
+			return
+# 			if self.monitor.P >= self.seq[self.currentPhase][4]:
+# 				self.locks.new_phase = True
+# 				self.locks.target_phase = self.currentPhase + 1
+# 				return
 		elif seqcp[1] == 3:
 			#Check phasetime
 			number = 60
@@ -820,6 +821,7 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage('Closing...')
 		self.process.close()
 
+		self.locks.can_Clock = False
 		self.modeNow = 'Inactive'
 		self.line_phase.setText(self.modeNow)
 		self.push_run.setEnabled(True)
