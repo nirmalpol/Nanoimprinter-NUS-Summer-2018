@@ -136,7 +136,7 @@ class processMemory:
 		# [1] Endcondition '1'
 		#		(0) Click to Proceed/ Will not stop automaticallu
 		#		(1) Reach Temp
-		#		(2) Reach Pressure
+		#		(2) (PRESSURE REGULATOR NOT READING RIGHT) Reach Pressure
 		#		(3) Wait for time to pass
 		#		(4) Immediately skip/ Temporarily 'delete' a phase
 		# [2] Target T '80'
