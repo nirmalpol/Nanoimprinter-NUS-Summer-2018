@@ -4,8 +4,10 @@
 File Name: AD5760.py
 Authors: Nirmal Pol and Raghav Srinivasan
 Date: July 09, 2018
+
 Description: This code allows someone to manipulate the AD5760 Digital to Analog converter (DAC) using a 
 Raspberry Pi. This code was tested using the evaluation board for this specific DAC, and with the following connections:
+
 Note: The numbering system uses the GPIO.BCM mode as reference
 SYNC connected to CE0 (GPIO pin 8)
 CLK connected to SCLC (GPIO pin 11)
