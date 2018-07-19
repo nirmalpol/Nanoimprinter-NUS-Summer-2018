@@ -55,9 +55,9 @@ class monitorClass:
 
 		#actual readings
 		T1_read = self.rtd1.readTemp()
-		if (T1_read > TEMP_LIMIT): raise KeyboardInterrupt
+		if (T1_read > TEMP_LIMIT): raise RuntimeError
 		T2_read = self.rtd2.readTemp()
-		if (T2_read > TEMP_LIMIT): raise KeyboardInterrupt
+		if (T2_read > TEMP_LIMIT): raise RuntimeError
 
 		#Time decayed readings
 		self.T = (2*T1_read+3*self.T_bfr)/5 	#Time consuming due to 100 ms sleep

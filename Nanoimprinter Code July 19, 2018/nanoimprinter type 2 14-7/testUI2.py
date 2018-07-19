@@ -67,7 +67,6 @@ class locker:
 	# I should've put (NanoUI)self.modeNow here but hey this is implemented later
 	can_Measure = False
 	can_Process = False
-	can_Clock = False
 
 	is_moving_phase = False
 	is_moving_phase_when = 0
@@ -293,14 +292,68 @@ class NanoUI(QtWidgets.QMainWindow):
 					self.labelsArray[tab][i].setHidden(True)
 				for i in range(9,17):
 					self.settingsArray[tab][i].setHidden(True)
+				endcon = self.seq[tab][1]
+				if endcon != 3:
+					self.labelsArray[tab][2].setHidden(True)
+					self.settingsArray[tab][2].setHidden(True)
+					self.settingsArray[tab][3].setHidden(True)
+				else:
+					pass
+				heat_profile = self.seq[tab][5]
+				if (heat_profile == 0) or (heat_profile == 2):
+					pass
+				else:
+					self.labelsArray[tab][6].setHidden(True)
+					self.settingsArray[tab][9].setHidden(True)
+					self.settingsArray[tab][10].setHidden(True)
+				# PID
+				if (heat_profile == 1):
+					pass
+				else:
+					self.labelsArray[tab][7].setHidden(True)
+					self.labelsArray[tab][8].setHidden(True)
+					self.labelsArray[tab][9].setHidden(True)
+					self.settingsArray[tab][11].setHidden(True)
+					self.settingsArray[tab][12].setHidden(True)
+					self.settingsArray[tab][13].setHidden(True)
+					self.settingsArray[tab][14].setHidden(True)
+					self.settingsArray[tab][15].setHidden(True)
+					self.settingsArray[tab][16].setHidden(True)
 		elif self.checkBox_detailed.isChecked() == True:
 			for tab in range(self.number_of_phase):
 				for i in range(6,10):
 					self.labelsArray[tab][i].setHidden(False)
 				for i in range(9,17):
 					self.settingsArray[tab][i].setHidden(False)
+				endcon = self.seq[tab][1]
+				if endcon != 3:
+					pass
+				else:
+					self.labelsArray[tab][2].setHidden(False)
+					self.settingsArray[tab][2].setHidden(False)
+					self.settingsArray[tab][3].setHidden(False)
+				heat_profile = self.settingsArray[tab][8]
+				if (heat_profile == 0) or (heat_profile == 2):
+					self.labelsArray[tab][6].setHidden(False)
+					self.settingsArray[tab][9].setHidden(False)
+					self.settingsArray[tab][10].setHidden(False)
+				else:
+					pass
+				# PID
+				if (heat_profile == 1):
+					self.labelsArray[tab][7].setHidden(False)
+					self.labelsArray[tab][8].setHidden(False)
+					self.labelsArray[tab][9].setHidden(False)
+					self.settingsArray[tab][11].setHidden(False)
+					self.settingsArray[tab][12].setHidden(False)
+					self.settingsArray[tab][13].setHidden(False)
+					self.settingsArray[tab][14].setHidden(False)
+					self.settingsArray[tab][15].setHidden(False)
+					self.settingsArray[tab][16].setHidden(False)
+				else:
+					pass
 		else:
-			return #Error
+			raise #Error
 
 	def adjustSettings(self):
 		if self.modeNow == 'Edit':
@@ -598,9 +651,11 @@ class NanoUI(QtWidgets.QMainWindow):
 				self.settingsArray[tab][6].setText(str(a))
 				self.seq[tab][4] = a
 		elif widgCode == 8:
+			# Heating Profile
 			b = self.settingsArray[tab][8].currentIndex()
 			self.seq[tab][5] = b
-			if (b == 1) or (b == 3):
+			# Rapid, Off or PWM
+			if (b == 0) or (b == 2):
 				self.labelsArray[tab][6].setHidden(False)
 				self.settingsArray[tab][9].setHidden(False)
 				self.settingsArray[tab][10].setHidden(False)
@@ -608,8 +663,8 @@ class NanoUI(QtWidgets.QMainWindow):
 				self.labelsArray[tab][6].setHidden(True)
 				self.settingsArray[tab][9].setHidden(True)
 				self.settingsArray[tab][10].setHidden(True)
-
-			if (b == 0):
+			# PID
+			if (b == 1):
 				self.labelsArray[tab][7].setHidden(False)
 				self.labelsArray[tab][8].setHidden(False)
 				self.labelsArray[tab][9].setHidden(False)
@@ -679,12 +734,16 @@ class NanoUI(QtWidgets.QMainWindow):
 					print(self.process.pwm_center)
 					self.monit_powc.setText("{:3d}%".format(self.process.pwm_center))
 					self.monit_powe.setText("{:3d}%".format(self.process.pwm_edge))
+				else:
+					self.monit_powc.setText("-")
+					self.monit_powe.setText("-")
 				time.sleep(0.1)
 		except Exception as err:
 			traceback.print_tb(err.__traceback__)	
 			# Activate Emergency flag if any error occur
-			self.locks.can_Measure = False
 			self.locks.is_Emergency = True
+		finally:
+			self.locks.can_Measure = False
 
 
 	#Called once upon Thread creation. Repeats until lock is deactivated
@@ -695,26 +754,27 @@ class NanoUI(QtWidgets.QMainWindow):
 				self.monitor.sendval()
 				time.sleep(1)
 		except Exception as err:
-			traceback.print_tb(err.__traceback__)	
+			traceback.print_tb(err.__traceback__)
 			# Activate Emergency flag if any error occur
-			self.locks.can_Measure = False
 			self.locks.is_Emergency = True
+		finally:
+			self.locks.can_Measure = False
 
 
 	def displayTime(self):
 		# Check for time of phase reset
 		if self.locks.new_phase:
-			self.start_time_of_phase = time.time() - self.start_time_of_run
+			self.start_time_of_phase = time.time()
 
 		# Create a counting clock indicating time from start of run
-		number = round(time.time() - self.start_time_of_run - 0.5)
-		timetext = "{:02d}:{:02d}".format(number // 60,number%60)
+		time_elapsed = round(time.time() - self.start_time_of_run - 0.5)
+		timetext = "{:02d}:{:02d}".format(time_elapsed // 60,time_elapsed%60)
 		self.label_runtime.setText(timetext)
 		self.monit_time.setText(timetext)
 
 		# Create a clock from start of only one phase
-		number_phase = number - self.start_time_of_phase
-		timetext2 = "{:02d}:{:02d}".format(number_phase // 60,number_phase%60)
+		number_phase = round(time.time() - self.start_time_of_phase - 0.5)
+		timetext2 = "{:02d}:{:02d}".format(time_elapsed_phase // 60,time_elapsed_phase%60)
 		self.monit_timephase.setText(timetext2)
 
 
@@ -731,7 +791,6 @@ class NanoUI(QtWidgets.QMainWindow):
 			self.displayMessage('=====')
 			self.shownow()
 			self.displayMessage('Run Begins')
-			self.modeNow = 'Run'
 			self.line_phase.setText(self.modeNow)
 			self.label_runtime.setText('--:--')
 			self.monit_time.setText('00:00')
@@ -752,26 +811,28 @@ class NanoUI(QtWidgets.QMainWindow):
 		# 	ALWAYS INVOKE runPhaseInterrupt first
 		# runOnce is used conversely to begin run cycles
 		# =====================================
+			try:
+				self.currentPhase = 0
+				self.process.setup()
+				self.process.loadData(self.seq[self.currentPhase])
 
-			self.currentPhase = 0
-			self.process.setup()
-			self.process.loadData(self.seq[self.currentPhase])
+				self.locks.new_phase = False
+				self.start_time_of_run = time.time()
+				self.start_time_of_phase = 0
+				
+				a = threading.Thread(target = self.runThread)
+				self.threads.append(a)
+				a.start()
 
-			self.locks.can_Clock = True
-			self.locks.new_phase = False
-			self.start_time_of_run = time.time()
-			self.start_time_of_phase = 0
-		
-			a = threading.Thread(target = self.runThread)
-			self.threads.append(a)
-			a.start()
+				self.modeNow = 'Run'
+
+			except Exception as arr:
+				traceback.print_tb(err.__traceback__)
 
 		elif self.modeNow == 'Run':
 			return #Error
 		else:
-			raise #Error
-
-		
+			raise #Error		
 
 	def runThread(self):
 		self.locks.can_Process = True
@@ -802,19 +863,21 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.locks.new_phase = False
 		if self.locks.target_phase in range(self.number_of_phase):
 			# Move to a particular phase
+			self.displayMessage("Moving to phase {}".format(self.locks.target_phase))
 			self.currentPhase = self.locks.target_phase
 			self.phase_tabs.setCurrentIndex(self.locks.target_phase)
 			self.process.loadData(self.seq[self.currentPhase])
 			return
 		else:
 			# Exit
+			self.displayMessage("Exiting run...")
 			self.locks.can_Process = False
 			return
 
 	def runCheck(self):
 		# [!] WARNING spike in T or P can trigger end of phase forcefully
 		# [!] Will need some time before being sure that the change in T or P is not transient
-		self.checkDelay = 0
+		self.checkDelay = 1 	# 1 second worth of re-check
 		if self.locks.is_moving_phase:
 			if time.time() - self.locker.is_moving_phase_when < self.checkDelay:
 				return
@@ -826,15 +889,17 @@ class NanoUI(QtWidgets.QMainWindow):
 					self.locks.target_phase = self.currentPhase + 1
 					self.locks.is_moving_phase = False
 					return
-			elif seqcp[1] == 2:
+			if seqcp[1] == 2:
 				#Reach P
 				if self.monitor.P >= self.seq[self.currentPhase][4]:
 					self.locks.new_phase = True
 					self.locks.target_phase = self.currentPhase + 1
 					self.locks.is_moving_phase = False
 					return
-			else:
-				return
+			# Dismiss previous result as a spike
+			self.locks.is_moving_phase = False
+			self.displayMessage("Change phase ignored due to spike")
+
 		# From seqcp:
 		# [1] Endcondition '1'
 		#		(0) Click to Proceed/ Will not stop automaticallu
@@ -849,23 +914,27 @@ class NanoUI(QtWidgets.QMainWindow):
 			if self.monitor.T >= seqcp[3]:
 				self.locks.is_moving_phase = True
 				self.locks.is_moving_phase_when = time.time()
+				self.displayMessage("Detected Temperature crossed target {:.2f}".format(seqcp[3]))
 				return
 		elif seqcp[1] == 2:
 			#Reach P
 			if self.monitor.P >= seqcp[4]:
 				self.locks.is_moving_phase = True
 				self.locks.is_moving_phase_when = time.time()
+				self.displayMessage("Detected Pressure crossed target {:.2f}".format(seqcp[4]))
 				return
 		elif seqcp[1] == 3:
 			#Check phasetime
-			number = 60
-			if number >= self.seq[self.currentPhase][2]:
+			time_elapsed_phase = round(time.time() - self.start_time_of_phase - 0.5)
+			if time_elapsed_phase >= self.seq[self.currentPhase][2]:
 				self.locks.new_phase = True
 				self.locks.target_phase = self.currentPhase + 1
+				self.displayMessage("{} seconds has elapsed in phase {}".format(self.seq[self.currentPhase][2],self.currentPhase))
 				return
 		elif seqcp[1] == 4:
 			self.locks.new_phase = True
 			self.locks.target_phase = self.currentPhase + 1
+			self.displayMessage("Skipping phase {}".format(self.currentPhase))
 			return
 		else:
 			return
@@ -916,9 +985,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage("{} {}".format("Requesting Move to Next Phase :",str(thisTab+2)))
 		a = self.generateMessageBox("Confirm Next","Continue to Next Phase?")
 		if a == QMessageBox.Ok:
-			self.displayMessage("{} {}{}".format("Moving to Phase ",str(thisTab+2),"..."))
 			if thisTab == self.currentPhase:
-				self.locks.target_phase += 1
+				self.locks.target_phase = self.currentPhase + 1
 				self.locks.new_phase = True
 			else:
 				self.displayMessage("Error. Moving to Next Tab Aborted")
@@ -928,9 +996,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage("{} {}".format("Requesting Move to Previous Phase :",str(thisTab)))
 		a = self.generateMessageBox("Confirm Return","Return to Previous Phase?")
 		if a == QMessageBox.Ok:
-			self.displayMessage("{} {}{}".format("Moving to Phase ",str(thisTab),"..."))
 			if thisTab == self.currentPhase:
-				self.locks.target_phase -= 1
+				self.locks.target_phase = self.currentPhase - 1
 				self.locks.new_phase = True
 			else:
 				self.displayMessage("Error. Moving to Previous Tab Aborted")
@@ -940,9 +1007,8 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage("Requesting Goto Phase")
 		a = self.generateInputBox("Select Tab","Return to Previous Phase?",thisTab+1,0,self.number_of_phase,0)
 		if a != None:
-			self.displayMessage("{} {}{}".format("Moving to Phase ",str(int(a)),"..."))
 			if a == thisTab+1:
-				self.displayMessage("Moving to Tab Aborted")
+				self.displayMessage("Please enter a different tab")
 			elif thisTab == self.currentPhase:
 				self.locks.target_phase = a - 1
 				self.locks.new_phase = True
@@ -966,7 +1032,7 @@ class NanoUI(QtWidgets.QMainWindow):
 	# The functions below are for miscellaneous purposes
 	# ==========================================================
 
-	def generateMessageBox(self, title, msg):
+	def generateMessageBox(self, title = "title", msg = "message"):
 		#Function thatt generates a dialog box
 		msgBox = QMessageBox()
 		msgBox.setIcon(QMessageBox.Information)
@@ -976,13 +1042,13 @@ class NanoUI(QtWidgets.QMainWindow):
 		ret = msgBox.exec_()
 		return ret
 
-	def generateInputBox(self, title, msg,defau,minim,maxim,steps):
+	def generateInputBox(self, title = "title", msg = "message",defau = 0,minim = 0,maxim = 10,steps = 1):
 		#Function thatt generates a dialog box
 		i, okPressed = QInputDialog.getDouble(self,title,msg,defau,minim,maxim,steps)
 		if okPressed:
 			return i
 
-	def displayMessage(self, msg, purpose = 'G'):
+	def displayMessage(self, msg = "An empty message", purpose = 'G'):
 		curr_time = time.time() - self.start_time
 		#By default/None sent to General. Purpose Flags available are 'G', 'P', 'M', 'X'
 		#G = General, P = Process, M = Monitor, X = Error
@@ -1029,8 +1095,8 @@ class NanoUI(QtWidgets.QMainWindow):
 	def keyPressEvent(self, event):
 		# Close application from escape key.
 		# results in QMessageBox dialog from closeEvent, good but how/why?
-		
 		if event.key() == Qt.Key_Escape:
+			print('exiting via keyPressEvent')
 			self.close()
 		
 

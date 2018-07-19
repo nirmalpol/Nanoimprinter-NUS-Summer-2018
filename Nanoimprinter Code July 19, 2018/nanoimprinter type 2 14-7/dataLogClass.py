@@ -73,24 +73,24 @@ class dataLogClass():
 		# y = 50* np.sin(t)
 		# y2 = 50* np.cos(t)
 		
-		# self.graphic.ax1 = self.graphic.figure.add_subplot(211)
+		self.graphic.ax1 = self.graphic.figure.add_subplot(211)
 		# self.graphic.ax1.plot(t,y2,**{'marker' : 'x','color':'black'})
 		# self.graphic.ax1.plot(t,y/25+51,**{'color':'green'})
 		# self.graphic.ax1.set_xlim([0,20])
-		# self.graphic.ax1.set_ylabel('Pressure / bar')
-		# self.graphic.ax1.set_title('Pressure')
-		# self.graphic.ax1.grid(color='grey', linestyle='dotted', linewidth=2)
+		self.graphic.ax1.set_ylabel('Pressure / bar')
+		self.graphic.ax1.set_title('Pressure')
+		self.graphic.ax1.grid(color='grey', linestyle='dotted', linewidth=2)
 		# self.graphic.canvas.draw()
 
-		# self.graphic.ax2 = self.graphic.figure.add_subplot(212)
+		self.graphic.ax2 = self.graphic.figure.add_subplot(212)
 		# self.graphic.ax2.plot(t,y,**{'marker' : 'x','color':'red'})
 		# self.graphic.ax2.plot(t,y2,**{'marker' : 'x','color':'blue'})
 		# self.graphic.ax2.plot(t,y2/25+51,**{'color':'green'})
 		# self.graphic.ax2.set_xlim([0,20])
-		# self.graphic.ax2.set_xlabel('Time / second')
-		# self.graphic.ax2.set_ylabel('Temperature / C')
-		# self.graphic.ax2.set_title('Temperature')
-		# self.graphic.ax2.grid(color='grey', linestyle='dotted', linewidth=2)
+		self.graphic.ax2.set_xlabel('Time / second')
+		self.graphic.ax2.set_ylabel('Temperature / C')
+		self.graphic.ax2.set_title('Temperature')
+		self.graphic.ax2.grid(color='grey', linestyle='dotted', linewidth=2)
 		# self.graphic.canvas.draw()
 
 
@@ -107,10 +107,8 @@ class dataLogClass():
 
 		self.graphic.figure.clear()
 
+		self.graphic.ax1 = self.graphic.figure.add_subplot(211)
 		self.graphic.ax1.plot(self.times,self.pressures,**{'marker' : 'x','color':'black'})
-		self.graphic.ax1.plot(self.times,self.pressures_targets,**{'color':'green'})
-		for xintercept in self.times3:
-			self.graphic.ax1.axvline(x=xintercept)
 		self.graphic.ax1.set_xlim(timespan)
 		self.graphic.ax1.set_ylim(Pspan)
 		self.graphic.ax1.set_ylabel('Pressure / bar')
@@ -118,11 +116,9 @@ class dataLogClass():
 		self.graphic.ax1.grid(color='grey', linestyle='dotted', linewidth=2)
 		self.graphic.canvas.draw()
 
+		self.graphic.ax2 = self.graphic.figure.add_subplot(212)
 		self.graphic.ax2.plot(self.times,self.temps_cent,**{'marker' : 'x','color':'red'})
 		self.graphic.ax2.plot(self.times,self.temps_edge,**{'marker' : 'x','color':'blue'})
-		self.graphic.ax2.plot(self.times,self.temps_targets,**{'color':'green'})
-		for xintercept in self.times3:
-			self.graphic.ax1.axvline(x=xintercept)
 		self.graphic.ax2.set_xlim(timespan)
 		self.graphic.ax2.set_xlim(Tspan)
 		self.graphic.ax2.set_xlabel('Time / second')
@@ -131,6 +127,16 @@ class dataLogClass():
 		self.graphic.ax2.grid(color='grey', linestyle='dotted', linewidth=2)
 		self.graphic.canvas.draw()
 
+		if self.is_process_running:
+			self.graphic.ax1.plot(self.times,self.pressures_targets,**{'color':'green'})
+			for xintercept in self.times3:
+				self.graphic.ax1.axvline(x=xintercept)
+
+			self.graphic.ax2.plot(self.times,self.temps_targets,**{'color':'green'})
+			for xintercept in self.times3:
+				self.graphic.ax1.axvline(x=xintercept)
+
+			self.is_process_running = False
 
 	# Supply Data functions
 	# ==========================================================
@@ -155,6 +161,7 @@ class dataLogClass():
 			self.graphinfo[2][0] = P
 		if self.graphinfo[2][1] < P:
 			self.graphinfo[2][1] = P
+		self.updateGraph()
 
 	def updateFromProcess(self,curr_time,pwm,pwm2,pwm3,trgtT,trgtP):
 		self.times2.append(curr_time)
@@ -168,7 +175,8 @@ class dataLogClass():
 
 		self.temps_targets.append(trgtT)
 		self.pressures_targets.append(trgtT)
-		self.updateGraph()
+
+		self.is_process_running = True
 
 	def updateVerticalLine(self,curr_time):
 		self.times3.append(curr_time)
