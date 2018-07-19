@@ -44,7 +44,7 @@ from PyQt5.QtCore import *
 import time
 import numpy as np
 import threading
-# import signal
+import traceback
 
 # Import original classes/functions
 from processMemory import processMemory
@@ -65,22 +65,20 @@ DEFAULTTAB = ['Default Message',1,0,80,0,0,100,2,2,5,1,1]
 class locker:
 	# This class is used for signalling between functions that they can work/ need to stop
 	# I should've put (NanoUI)self.modeNow here but hey this is implemented later
-	can_Measure = True
-	can_Process = True
+	can_Measure = False
+	can_Process = False
 	can_Clock = False
 
-
+	is_moving_phase = False
+	is_moving_phase_when = 0
 	new_phase = False
 	target_phase = 0
 
 	is_Emergency = False
 	is_exiting = False
 
-
 	# Threading conditions, as a way to control whether threads open or close
 	# cMeasure = threading.Condition()	#Used when you want several running UI, so they do work alternately
-
-
 
 class NanoUI(QtWidgets.QMainWindow):
 	threads = []
@@ -262,7 +260,9 @@ class NanoUI(QtWidgets.QMainWindow):
 	# Sequence and Log Adjust functions
 	# ==========================================================
 
+	# NOT DONE. Adjust differently for Heating Profile
 	def showDetails(self):
+		#Function of pressing "Show/Hide Details of Sequence"
 		if self.checkBox_detailed.isChecked() == False:
 			for tab in range(self.number_of_phase):
 				for i in range(6,10):
@@ -492,11 +492,11 @@ class NanoUI(QtWidgets.QMainWindow):
 		elif buttonCode == 2:
 			print('move not yet implemented')
 		else:
-			print("Heh")
-			self.displayMessage(" ".join((str(tab),str(buttonCode))))
+			self.displayMessage(" ".join((str(tab),str(buttonCode))),'X')
 			return #Error
 
 	def reindexTab(self,row):
+		# Function to "shift tabs" when a tab at about the center is being deleted
 		self.phase_tabs.setTabText(row,str(row+1))
 		for col in range(len(self.settingsArray[row])):
 			prevName = self.settingsArray[row][col].objectName()
@@ -652,8 +652,10 @@ class NanoUI(QtWidgets.QMainWindow):
 				self.monit_Te.setText("{0:.03f}".format(self.monitor.T2))
 				self.monit_P.setText("{0:.01f}".format(self.monitor.P))
 				time.sleep(0.1)
-		except:			
+		except Exception as err:
+			traceback.print_tb(err.__traceback__)	
 			# Activate Emergency flag if any error occur
+			self.locks.can_Measure = False
 			self.locks.is_Emergency = True
 
 
@@ -664,8 +666,10 @@ class NanoUI(QtWidgets.QMainWindow):
 			while self.locks.can_Measure and (not self.locks.is_Emergency):
 				self.monitor.sendval()
 				time.sleep(1)
-		except:
+		except Exception as err:
+			traceback.print_tb(err.__traceback__)	
 			# Activate Emergency flag if any error occur
+			self.locks.can_Measure = False
 			self.locks.is_Emergency = True
 
 
@@ -752,7 +756,9 @@ class NanoUI(QtWidgets.QMainWindow):
 					self.runPhaseInterrupt()
 				else:
 					self.runOnce()
-		except:
+		except Exception as err:
+			traceback.print_tb(err.__traceback__)
+			self.can_Process = False
 			self.locks.is_Emergency = True
 		finally:
 			self.runEnd()
@@ -768,41 +774,61 @@ class NanoUI(QtWidgets.QMainWindow):
 		# self.log.updateVerticalLine(self.process.asktime())
 		self.locks.new_phase = False
 		if self.locks.target_phase in range(self.number_of_phase):
+			# Move to a particular phase
 			self.currentPhase = self.locks.target_phase
-			self.process.transition()
 			self.phase_tabs.setCurrentIndex(self.locks.target_phase)
 			self.process.loadData(self.seq[self.currentPhase])
 			return
 		else:
+			# Exit
 			self.locks.can_Process = False
 			return
 
-	# NOT DONE
 	def runCheck(self):
+		# [!] WARNING spike in T or P can trigger end of phase forcefully
+		# [!] Will need some time before being sure that the change in T or P is not transient
+		self.checkDelay = 0
+		if self.locks.is_moving_phase:
+			if time.time() - self.locker.is_moving_phase_when < self.checkDelay:
+				return
+			seqcp = self.seq[self.currentPhase]
+			if seqcp[1] == 1:
+				#Reach T
+				if self.monitor.T >= self.seq[self.currentPhase][3]:
+					self.locks.new_phase = True
+					self.locks.target_phase = self.currentPhase + 1
+					self.locks.is_moving_phase = False
+					return
+			elif seqcp[1] == 2:
+				#Reach P
+				if self.monitor.P >= self.seq[self.currentPhase][4]:
+					self.locks.new_phase = True
+					self.locks.target_phase = self.currentPhase + 1
+					self.locks.is_moving_phase = False
+					return
+			else:
+				return
 		# From seqcp:
 		# [1] Endcondition '1'
 		#		(0) Click to Proceed/ Will not stop automaticallu
 		#		(1) Reach Temp
-		#		(2) (PRESSURE NOT READ BY REGULATOR) Reach Pressure
+		#		(2) Reach Pressure
 		#		(3) Wait for time to pass
 		#		(4) Immediately skip/ Temporarily 'delete' a phase
 		#Check if end condition is fulfilled
-		# [!] WARNING spike in T or P can trigger end of phase forcefully
-		# [!] Will need some time before being sure that the change in T or P is not transient
 		seqcp = self.seq[self.currentPhase]
 		if seqcp[1] == 1:
 			#Reach T
 			if self.monitor.T >= self.seq[self.currentPhase][3]:
-				self.locks.new_phase = True
-				self.locks.target_phase = self.currentPhase + 1
+				self.locks.is_moving_phase = True
+				self.locks.is_moving_phase_when = time.time()
 				return
 		elif seqcp[1] == 2:
 			#Reach P
-			return
-# 			if self.monitor.P >= self.seq[self.currentPhase][4]:
-# 				self.locks.new_phase = True
-# 				self.locks.target_phase = self.currentPhase + 1
-# 				return
+			if self.monitor.P >= self.seq[self.currentPhase][4]:
+				self.locks.is_moving_phase = True
+				self.locks.is_moving_phase_when = time.time()
+				return
 		elif seqcp[1] == 3:
 			#Check phasetime
 			number = 60
@@ -821,7 +847,6 @@ class NanoUI(QtWidgets.QMainWindow):
 		self.displayMessage('Closing...')
 		self.process.close()
 
-		self.locks.can_Clock = False
 		self.modeNow = 'Inactive'
 		self.line_phase.setText(self.modeNow)
 		self.push_run.setEnabled(True)
@@ -932,8 +957,8 @@ class NanoUI(QtWidgets.QMainWindow):
 
 	def displayMessage(self, msg, purpose = 'G'):
 		curr_time = time.time() - self.start_time
-		#By default/None sent to General. Purpose Flags available are 'G', 'P', 'M', 'ErRoR'
-		#G = General, P = Process, M = Monitor
+		#By default/None sent to General. Purpose Flags available are 'G', 'P', 'M', 'X'
+		#G = General, P = Process, M = Monitor, X = Error
 		if purpose == 'G':
 			self.text_log.append(msg)
 			print(msg)

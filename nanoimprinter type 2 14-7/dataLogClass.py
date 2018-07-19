@@ -198,7 +198,7 @@ class dataLogClass():
 		elif purpose == 'M':
 			self.logMonitor.append([curr_time,msg])
 		else:
-			msg = ';'.join('Error',msg)
+			msg = ''.join('[Error] ',msg)
 			self.logGeneral.append([curr_time,msg])
 
 	# NOT DONE

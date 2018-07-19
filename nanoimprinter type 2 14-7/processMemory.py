@@ -49,8 +49,9 @@ class processMemory:
 		# DAC input ranges from 0 to 35 (by the pressureController)
 		self.dac_pres = 0
 
-		#NOTE that only pwm_center, pwm_edge and dac_pres are proper to be used to 
-		# change DutyCycle/output
+		# ^ NOTE that only pwm_center, pwm_edge and dac_pres are proper to be used to 
+		# 	change DutyCycle/output
+		# 	The intent is to have variables that reliably show what values are being output
 
 		# These variables will have ONLY current temp values and targets written to them.
 		self.T_center = 0
@@ -68,16 +69,14 @@ class processMemory:
 		# Which mode to use.
 		self.T_mode = None
 
-		self.setup()
-
-	#This function is called upon creating processMemory, or when resetting controllers
+	#This function is called upon starting runs, to build/reset controllers
 	def setup(self):
 		#The following are non-direct control methods employed
 		#Setup PID
 		self.pid_edge = pid_setup.pid_setup_edge(self.temp,0,0,0)
 		self.pid_center = pid_setup.pid_setup_center(self.temp,0,0,0)
 
-		#The following are the direct control pins output
+		#The following are the direct controller pins output
 		#Setup heater
 		self.pin_1 = heatctrl.setup1()
 		self.pin_2 = heatctrl.setup2()
@@ -92,10 +91,11 @@ class processMemory:
 
 	#A one-shot function, changing outputs only once
 	def run(self):
-		# Get Current T
+		# Use monitor to get current T values (x)
 		self.T_center = self.monitorfile.T
 		self.T_edge = self.monitorfile.T2
 
+		# Determine output values (u)
 		if self.T_mode == 'PWM':
 			pass
 		elif self.T_mode == 'PID':
@@ -127,7 +127,6 @@ class processMemory:
 	# Only accepts data from ONE phase at a time.
 	# To change phase, load data first before running
 
-	#NOT DONE
 	def loadData(self,seqcp):	
 		#seqcp stands for SEQuence at Current Phase
 		# seqcp file is organized as:	
@@ -136,7 +135,7 @@ class processMemory:
 		# [1] Endcondition '1'
 		#		(0) Click to Proceed/ Will not stop automaticallu
 		#		(1) Reach Temp
-		#		(2) (PRESSURE REGULATOR NOT READING RIGHT) Reach Pressure
+		#		(2) Reach Pressure
 		#		(3) Wait for time to pass
 		#		(4) Immediately skip/ Temporarily 'delete' a phase
 		# [2] Target T '80'
@@ -204,10 +203,22 @@ class processMemory:
 	# Closing:
 	# ==================
 	def close(self):
+		self.transition()
+
+		self.pwm_center = 0
+		self.pwm_edge = 0
+		self.dac_pres = 0
+
 		self.pin_1.change_duty(0)
 		self.pin_2.change_duty(0)
 		self.pin_3.setPressure(0)
 		self.pin_1.close()
 		self.pin_2.close()
 		self.pin_3.close()
+
+		#Control pins will be 'deleted'.
+		#Need to self.setup() to reactivate and use control pins
+		del self.pin_1
+		del self.pin_2
+		del self.pin_3
 

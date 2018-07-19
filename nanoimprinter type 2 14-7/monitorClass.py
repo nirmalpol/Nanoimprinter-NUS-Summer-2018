@@ -16,6 +16,10 @@ from max31865 import max31865 as rtd
 # import pressureread as pread
 import dataLogClass as log
 
+GLOBAL TEMP_LIMIT
+
+TEMP_LIMIT = 200		#Celsius. After this call for emergency shutdown
+
 class monitorClass:
 
 	def __init__(self,logfilefrommain,displayMessage):
@@ -50,13 +54,15 @@ class monitorClass:
 		self.T2_bfr = self.T2
 		# self.P_bfr = self.P
 
-		#Raw readings
-		# self.T = self.rtd1.readTemp()
-		# self.T2 = self.rtd2.readTemp()
+		#actual readings
+		T1_read = self.rtd1.readTemp()
+		raise if T1_read > TEMP_LIMIT
+		T2_read = self.rtd2.readTemp()
+		raise if T2_read > TEMP_LIMIT
 
 		#Time decayed readings
-		self.T = (2*self.rtd1.readTemp()+3*self.T_bfr)/5 	#Time consuming due to 100 ms sleep
-		self.T2 = (2*self.rtd2.readTemp()+3*self.T2_bfr)/5
+		self.T = (2*T1_read+3*self.T_bfr)/5 	#Time consuming due to 100 ms sleep
+		self.T2 = (2*T2_read+3*self.T2_bfr)/5
 		# self.P = pread.read(pre1)
 
 		self.curr_time = time.time() - self.start_time
