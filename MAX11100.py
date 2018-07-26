@@ -54,6 +54,7 @@ class max11100(object):
         
         #Convert to decimal:
         volt = (rval*10.0)/65535
+        volt = (volt - 0.0001)/0.97675 #Fudge factors as ADC is slightly off
         return volt
     
     def recvByte(self):
