@@ -264,16 +264,20 @@ class NanoUI(QtWidgets.QMainWindow):
 		else:
 			return
 
-	# NOT DONE
 	def fileOpen(self):
 		#add warning message as files will be unsaved
 		#then find a way to look up directory for data file
-		self.log.loadData()
+		openname, _ = QFileDialog.getOpenFileName(self,"Open File")
+		if openname:
+			assert(self.log.loadData(openname))
+		self.shownow()
+		self.displayMessage("Loaded from file {}".format(savename))
 
-	# NOT DONE
 	def fileSave(self):
-		savename = "test.txt"
-		assert(self.log.saveData())
+		savename = QtGui.QFileDialog.getSaveFileName(self, 'Save File')
+		if savename:
+			assert(self.log.saveData(savename))
+		self.shownow()
 		self.displayMessage("File saved as {}".format(savename))
 
 	def fileExit(self):

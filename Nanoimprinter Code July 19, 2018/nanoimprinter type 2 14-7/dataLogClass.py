@@ -14,6 +14,7 @@
 
 import numpy as np
 from PyQt5.QtWidgets import *
+import json
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -43,11 +44,11 @@ class dataLogClass():
 		self.temps_pwm_cent = []
 		self.temps_pwm_edge = []
 		self.pressures_pwm = []
+		self.temps_targets = []
+		self.pressures_targets = []
 
 		self.times3 = [] #Stores times when Phase changes occur
 
-		self.temps_targets = []
-		self.pressures_targets = []
 
 		# Hidden data used to build graphs. Graph spans 120 seconds, 
 		# and scrolls left every 30 seconds nearing edge, Starts at 0 Second from start of UI
@@ -67,31 +68,17 @@ class dataLogClass():
 		self.graphic.canvas.draw()
 
 		self.graphic.figure.clear()
-
-		#Dummy Graph
-		# t = np.arange(0,10,0.5)
-		# y = 50* np.sin(t)
-		# y2 = 50* np.cos(t)
 		
 		self.graphic.ax1 = self.graphic.figure.add_subplot(211)
-		# self.graphic.ax1.plot(t,y2,**{'marker' : 'x','color':'black'})
-		# self.graphic.ax1.plot(t,y/25+51,**{'color':'green'})
-		# self.graphic.ax1.set_xlim([0,20])
 		self.graphic.ax1.set_ylabel('Pressure / bar')
 		self.graphic.ax1.set_title('Pressure')
 		self.graphic.ax1.grid(color='grey', linestyle='dotted', linewidth=2)
-		# self.graphic.canvas.draw()
 
 		self.graphic.ax2 = self.graphic.figure.add_subplot(212)
-		# self.graphic.ax2.plot(t,y,**{'marker' : 'x','color':'red'})
-		# self.graphic.ax2.plot(t,y2,**{'marker' : 'x','color':'blue'})
-		# self.graphic.ax2.plot(t,y2/25+51,**{'color':'green'})
-		# self.graphic.ax2.set_xlim([0,20])
 		self.graphic.ax2.set_xlabel('Time / second')
 		self.graphic.ax2.set_ylabel('Temperature / C')
 		self.graphic.ax2.set_title('Temperature')
 		self.graphic.ax2.grid(color='grey', linestyle='dotted', linewidth=2)
-		# self.graphic.canvas.draw()
 
 
 
@@ -127,16 +114,14 @@ class dataLogClass():
 		self.graphic.ax2.grid(color='grey', linestyle='dotted', linewidth=2)
 		self.graphic.canvas.draw()
 
-		if self.is_process_running:
-			self.graphic.ax1.plot(self.times,self.pressures_targets,**{'color':'green'})
-			for xintercept in self.times3:
-				self.graphic.ax1.axvline(x=xintercept)
+		self.graphic.ax1.plot(self.times,self.pressures_targets,**{'color':'green'})
+		for xintercept in self.times3:
+			self.graphic.ax1.axvline(x=xintercept)
 
-			self.graphic.ax2.plot(self.times,self.temps_targets,**{'color':'green'})
-			for xintercept in self.times3:
-				self.graphic.ax1.axvline(x=xintercept)
+		self.graphic.ax2.plot(self.times,self.temps_targets,**{'color':'green'})
+		for xintercept in self.times3:
+			self.graphic.ax1.axvline(x=xintercept)
 
-			self.is_process_running = False
 
 	# Supply Data functions
 	# ==========================================================
@@ -168,35 +153,16 @@ class dataLogClass():
 		self.temps_pwm_cent.append(pwm)
 		self.temps_pwm_edge.append(pwm2)
 		self.pressures_pwm.append(pwm3)
+		self.temps_targets.append(trgtT)
+		self.pressures_targets.append(trgtP)
 
 		#Extend Span if needed
 		if self.graphinfo[0][0]+self.graphinfo[0][2] < curr_time:
 			self.graphinfo[0][2] += self.graphinfo[0][1]
 
-		self.temps_targets.append(trgtT)
-		self.pressures_targets.append(trgtT)
-
-		self.is_process_running = True
 
 	def updateVerticalLine(self,curr_time):
 		self.times3.append(curr_time)
-
-	# def resetMonitor(self):
-	# 	self.times = []
-	# 	self.temps_cent = []
-	# 	self.temps_edge = []
-	# 	self.pressures = []
-	# 	self.updateGraph()
-	# 	self.logMonitor = []
-
-	# def resetProcess(self):
-	# 	self.times2 = []
-	#	self.times3 = []
-	# 	self.temps_pwm_cent = []
-	# 	self.temps_pwm_edge = []
-	# 	self.pressures_pwm = []
-	# 	self.updateGraph()
-	# 	self.logProcess = []
 
 	def saveMsg(self,msg,curr_time,purpose):
 		if purpose == 'G':
@@ -209,14 +175,44 @@ class dataLogClass():
 			msg = ''.join('[Error] ',msg)
 			self.logGeneral.append([curr_time,msg])
 
-	# NOT DONE
 	def loadData(self,sourceFile):
-		print('Loading')
+		with open(sourceFile,"r") as read_file:
+			data = json.load(read_file)
+			combined_log = data[0]
+			self.logGeneral = combined_log[0]
+			self.logMonitor = combined_log[1]
+			self.logProcess = combined_log[2]
 
-	# NOT DONE
+			combined_graph = data[1]
+			self.graphinfo = combined_graph[0]
+
+			readings = combined_graph[1]
+			self.times = readings[0]
+			self.temps_cent = readings[1]
+			self.temps_edge = readings[2]
+			
+			controls = combined_graph[2]
+			self.times2 = controls[0]
+			self.temps_pwm_cent = controls[1]
+			self.temps_pwm_edge = controls[2]
+			self.pressures_pwm = controls[3]
+			self.temps_targets = controls[4]
+			self.pressures_targets  = controls[5]
+
+			phasers = combined_graph[3]
+			self.times3 = phasers[0]
+			
+		self.updateGraph()
+
 	def saveData(self,targetfile):
-		print('Creating file')
+		with open(targetfile,"w") as write_file:
+			combined_log = [self.logGeneral,self.logMonitor,self.logProcess]
 
+			readings = [self.times,self.temps_cent,self.temps_edge,self.pressures]
+			controls = [self.times2,self.temps_pwm_cent,self.temps_pwm_edge,self.pressures_pwm,self.temps_targets,self.pressures_targets]			
+			phasers = [self.times3]
 
+			combined_graph = [self.graphinfo,readings,controls,phasers]
 
-
+			outputToFile = [combined_log,combined_graph
+			json.dump(outputToFile,write_file)
