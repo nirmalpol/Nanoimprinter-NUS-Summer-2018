@@ -5,7 +5,7 @@ This respository contains the improvements, changes, additions and tests perform
            
    ![image](https://user-images.githubusercontent.com/33207203/46577079-00835e00-c9ab-11e8-9794-8ff65425776d.png)
 
-The "Nanoimprinter Code July 19, 2018" contains the UI code, pressure system code(ADC, DAC), and the temperature system code (Thermocouples, Heating elements).  
+The "Nanoimprinter Code July 19, 2018" contains the UI code, pressure system code(ADC, DAC), and the temperature system code (Thermocouples, Heating elements). The description of each programming file and comments are mentioned in the the file in great detail.
   
 The ADC and DAC are industrial models that are connected appropriately based on your respective system and the data sheets provided. As a result, there were no examples on how to connect the electrical components other than reading the data sheets. However, for our project, the goal was to be able to accurately control pressure based on the input and output of the pressure regulator. So the following connections present in the diagram were required for operation:
   
